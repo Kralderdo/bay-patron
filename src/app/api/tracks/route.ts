@@ -9,14 +9,14 @@ export async function GET(request: NextRequest) {
 
   if (!clientId) {
     return NextResponse.json(
-      { error: "Jamendo API anahtarı henüz ayarlanmadı." },
+      { error: "Müzik servisi henüz yapılandırılmadı." },
       { status: 503 }
     );
   }
 
   if (!query || query.length > 100) {
     return NextResponse.json(
-      { error: "Lütfen geçerli bir şarkı veya sanatçı adı gir." },
+      { error: "1 ile 100 karakter arasında arama yaz." },
       { status: 400 }
     );
   }
@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
     url.searchParams.set("limit", "30");
     url.searchParams.set("namesearch", query);
     url.searchParams.set("audioformat", "mp32");
-    url.searchParams.set("include", "musicinfo");
 
     const response = await fetch(url.toString(), {
       cache: "no-store",
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: "Müzik servisine şu anda ulaşılamıyor." },
+        { error: "Müzik servisi şu anda yanıt vermiyor." },
         { status: 502 }
       );
     }
@@ -46,29 +46,43 @@ export async function GET(request: NextRequest) {
 
     if (result.headers?.status !== "success") {
       return NextResponse.json(
-        { error: "Müzikler alınamadı. Daha sonra tekrar dene." },
+        { error: "Müzik araması başarısız oldu." },
         { status: 502 }
       );
     }
 
-    const tracks = (result.results ?? []).map(
-      (track: Record<string, unknown>) => ({
-        id: String(track.id ?? ""),
+    const tracks = (Array.isArray(result.results) ? result.results : [])
+      .filter(
+        (track: Record<string, unknown>) =>
+          typeof track.id === "string" ||
+          typeof track.id === "number"
+      )
+      .map((track: Record<string, unknown>) => ({
+        id: String(track.id),
         title: String(track.name ?? "İsimsiz parça"),
         artist: String(track.artist_name ?? "Bilinmeyen sanatçı"),
         album: String(track.album_name ?? ""),
         image: String(track.album_image ?? track.image ?? ""),
-        audio: String(track.audio ?? ""),
-        duration: Number(track.duration ?? 0),
+        audio: typeof track.audio === "string" ? track.audio : "",
+        duration: Math.max(0, Number(track.duration) || 0),
         downloadable: track.audiodownload_allowed === true,
-      })
-    );
+      }))
+      .filter((track: { id: string; audio: string }) =>
+        track.id && track.audio.startsWith("http")
+      );
 
-    return NextResponse.json({ tracks });
+    return NextResponse.json(
+      { tracks },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   } catch {
     return NextResponse.json(
-      { error: "Bağlantı hatası oluştu. Tekrar dene." },
-      { status: 500 }
+      { error: "Bağlantı zaman aşımına uğradı veya hata oluştu." },
+      { status: 502 }
     );
   }
 }

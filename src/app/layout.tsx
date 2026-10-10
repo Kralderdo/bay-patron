@@ -1,29 +1,38 @@
 
 import type { Metadata, Viewport } from "next";
+import ServiceWorkerRegister from "./ServiceWorkerRegister";
 import "./globals.css";
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://baypatron.com";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://baypatron.com"
-  ),
+  metadataBase: new URL(siteUrl),
+
   title: {
     default: "♛ BAY PATRON | Müzik Dünyası",
     template: "%s | BAY PATRON",
   },
+
   description:
     "BAY PATRON ile müzik keşfet, favorilerini oluştur ve izin verilen parçaları çevrimdışı dinle.",
+
   applicationName: "BAY PATRON",
+
   manifest: "/manifest.json",
+
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
     apple: "/icon.svg",
   },
+
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "BAY PATRON",
   },
+
   openGraph: {
     title: "BAY PATRON | Müzik Dünyası",
     description:
@@ -31,7 +40,9 @@ export const metadata: Metadata = {
     siteName: "BAY PATRON",
     type: "website",
     locale: "tr_TR",
+    url: siteUrl,
   },
+
   robots: {
     index: true,
     follow: true,
@@ -52,7 +63,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }

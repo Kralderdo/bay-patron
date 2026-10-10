@@ -1,0 +1,21 @@
+
+{
+  "id": "/",
+  "name": "BAY PATRON",
+  "short_name": "BAY PATRON",
+  "description": "BAY PATRON müzik platformu",
+  "lang": "tr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08090b",
+  "theme_color": "#08090b",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

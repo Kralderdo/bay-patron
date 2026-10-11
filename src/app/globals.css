@@ -1,50 +1,230 @@
-/* BAY PATRON — Gold Royal Animations */
 
-@keyframes crown-float {
-  0%, 100% {
-    transform: translateY(0) rotate(-2deg);
-  }
-  50% {
-    transform: translateY(-12px) rotate(2deg);
-  }
+@import "tailwindcss";
+
+/* BAY PATRON — ROYAL GOLD EXPERIENCE */
+
+:root {
+  --royal-black: #080706;
+  --royal-panel: #14110c;
+  --royal-gold: #d4af37;
+  --royal-light: #fff0a0;
+  --royal-text: #f6e8bd;
+  --royal-muted: #a69b82;
 }
 
-@keyframes gold-glow {
-  0%, 100% {
-    opacity: 0.35;
-    filter: blur(25px);
-  }
-  50% {
-    opacity: 0.8;
-    filter: blur(45px);
-  }
+* {
+  box-sizing: border-box;
 }
 
-@keyframes gold-shimmer {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
+html {
+  min-height: 100%;
+  background: var(--royal-black);
+  scroll-behavior: smooth;
 }
 
-@keyframes royal-pulse {
-  0%, 100% {
-    box-shadow: 0 0 12px #d4af3740;
-  }
-  50% {
-    box-shadow: 0 0 32px #ffd70070;
-  }
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, #38280d 0, transparent 38%),
+    var(--royal-black);
+  color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--royal-light);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: #080706;
+  background: #e7c65b;
+}
+
+/* Ana sayfa */
+
+.royal-page {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 0%, #38280d 0, transparent 38%),
+    #080706;
+}
+
+.royal-stars {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image:
+    radial-gradient(#f8dc83 1px, transparent 1px),
+    radial-gradient(#c99b35 1px, transparent 1px);
+  background-size: 70px 70px, 110px 110px;
+  animation: royal-star-drift 35s linear infinite;
+}
+
+/* Görkemli açılış */
+
+.royal-hero {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 72% 35%, #76531545, transparent 40%),
+    linear-gradient(120deg, #201808, #0b0906 60%, #1a1408);
+  box-shadow:
+    inset 0 0 70px #d4af3708,
+    0 25px 80px #0009;
+}
+
+.royal-halo {
+  position: absolute;
+  top: 50%;
+  right: 5%;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: #d4af3720;
+  filter: blur(70px);
+  animation: royal-halo-pulse 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Taç alanı */
+
+.royal-crown-stage {
+  position: relative;
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
 }
 
 .royal-crown {
-  animation: crown-float 4s ease-in-out infinite;
+  z-index: 2;
+  color: transparent;
+  background: linear-gradient(
+    145deg,
+    #fff4b1,
+    #e7bb43 35%,
+    #96651b 65%,
+    #ffe99b
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-size: clamp(130px, 25vw, 220px);
+  line-height: 1;
+  filter:
+    drop-shadow(0 0 16px #d4af3770)
+    drop-shadow(0 25px 20px #000);
+  animation: royal-crown-float 4s ease-in-out infinite;
 }
 
-.royal-glow {
-  animation: gold-glow 5s ease-in-out infinite;
+.royal-crown-ring {
+  position: absolute;
+  z-index: -1;
+  width: min(72vw, 300px);
+  aspect-ratio: 1;
+  border: 1px solid #d4af3755;
+  border-radius: 50%;
+  box-shadow:
+    0 0 30px #d4af371c,
+    inset 0 0 30px #d4af3715;
+  animation: royal-ring-rotate 14s linear infinite;
 }
+
+.royal-crown-ring::before,
+.royal-crown-ring::after {
+  position: absolute;
+  inset: 14px;
+  border: 1px dashed #f5d77866;
+  border-radius: 50%;
+  content: "";
+}
+
+.royal-crown-ring::after {
+  inset: 30px;
+  border-style: solid;
+  border-color: #d4af3725;
+}
+
+.royal-crown-caption,
+.royal-crown-subtitle {
+  z-index: 2;
+  color: #f3d77d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.42em;
+  text-shadow: 0 0 20px #d4af3780;
+}
+
+.royal-crown-subtitle {
+  margin-top: 7px;
+  color: #8f7842;
+  font-size: 8px;
+  letter-spacing: 0.5em;
+}
+
+/* Yükselen altın parçacıklar */
+
+.royal-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.royal-particles i {
+  position: absolute;
+  left: calc(mod(var(--i) * 37, 100) * 1%);
+  bottom: -12px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffe9a0;
+  box-shadow: 0 0 12px 2px #d4af37;
+  animation: royal-particle-rise 7s linear infinite;
+  animation-delay: calc(var(--i) * -0.47s);
+}
+
+/* Dönen yörüngeler */
+
+.royal-orbit {
+  position: absolute;
+  top: 24%;
+  right: 8%;
+  width: 160px;
+  height: 60px;
+  border: 1px solid #d4af3733;
+  border-radius: 50%;
+  transform: rotate(-28deg);
+  pointer-events: none;
+  animation: royal-ring-rotate 12s linear infinite;
+}
+
+.royal-orbit-two {
+  top: 60%;
+  right: 18%;
+  width: 120px;
+  height: 45px;
+  transform: rotate(30deg);
+  animation-direction: reverse;
+}
+
+/* Altın parlayan yazılar */
 
 .royal-title {
   background: linear-gradient(
@@ -55,40 +235,253 @@
     #fff6c7,
     #a67c28
   );
-  background-size: 200% auto;
+  background-size: 250% auto;
   color: transparent;
   background-clip: text;
   -webkit-background-clip: text;
-  animation: gold-shimmer 6s linear infinite;
+  animation: royal-gold-shimmer 7s linear infinite;
 }
 
-.royal-card {
-  border: 1px solid #d4af3730;
+/* Arama kutusu */
+
+.royal-search {
+  border: 1px solid #d4af3745;
+  background: #080706aa;
+  box-shadow: 0 0 35px #d4af370b;
+}
+
+.royal-search input {
+  color: white;
+  caret-color: var(--royal-gold);
+}
+
+.royal-search input::placeholder {
+  color: #82775e;
+}
+
+/* Altın butonlar */
+
+.royal-button {
+  border: 1px solid #f6dc83;
+  background: linear-gradient(
+    115deg,
+    #fff0a0,
+    #d5a936 45%,
+    #a16b18
+  );
+  box-shadow: 0 0 18px #d4af372b;
+  color: #080706;
+  font-weight: 900;
   transition:
-    transform 300ms ease,
-    border-color 300ms ease,
-    box-shadow 300ms ease;
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.royal-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 0 28px #d4af3760;
+}
+
+.royal-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+  transform: none;
+}
+
+/* Müzik kartları */
+
+.royal-card {
+  border: 1px solid #d4af372b;
+  background: linear-gradient(135deg, #1c1810, #0c0b09);
+  box-shadow: inset 0 1px #ffffff05;
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .royal-card:hover {
   transform: translateY(-5px);
-  border-color: #d4af37a0;
-  box-shadow: 0 12px 36px #d4af3718;
+  border-color: #e5c45d88;
+  box-shadow:
+    0 15px 38px #0008,
+    0 0 25px #d4af3710;
 }
 
-.royal-button {
-  animation: royal-pulse 3s ease-in-out infinite;
+.royal-card img {
+  transition: transform 0.5s ease;
 }
+
+.royal-card:hover img {
+  transform: scale(1.07);
+}
+
+/* Canlı durum göstergesi */
+
+.royal-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f1d16c;
+  box-shadow: 0 0 12px #f1d16c;
+  animation: royal-dot-pulse 1.8s ease-in-out infinite;
+}
+
+/* Sabit müzik oynatıcı */
+
+.royal-player {
+  border-top: 1px solid #d4af3730;
+  background: #090806f5;
+  box-shadow:
+    0 -12px 55px #000b,
+    0 -1px #d4af3720;
+}
+
+.royal-player audio {
+  accent-color: #d4af37;
+}
+
+/* Logo */
+
+.royal-logo {
+  border: 1px solid #e9c75b80;
+  background: linear-gradient(
+    135deg,
+    #ffe9a0,
+    #c99a2e,
+    #6b4510
+  );
+  box-shadow: 0 0 25px #d4af3725;
+  animation: royal-crown-float 5s ease-in-out infinite;
+}
+
+/* Animasyonlar */
+
+@keyframes royal-crown-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+@keyframes royal-ring-rotate {
+  from {
+    rotate: 0deg;
+  }
+
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes royal-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    scale: 0.9;
+  }
+
+  50% {
+    opacity: 0.9;
+    scale: 1.12;
+  }
+}
+
+@keyframes royal-particle-rise {
+  0% {
+    transform: translateY(0) scale(0.4);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translateY(-340px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes royal-gold-shimmer {
+  from {
+    background-position: 200% center;
+  }
+
+  to {
+    background-position: -200% center;
+  }
+}
+
+@keyframes royal-star-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+
+  to {
+    background-position: 300px -500px, -250px 350px;
+  }
+}
+
+@keyframes royal-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    scale: 0.85;
+  }
+
+  50% {
+    opacity: 1;
+    scale: 1.25;
+  }
+}
+
+/* Telefon ve küçük ekranlar */
+
+@media (max-width: 640px) {
+  .royal-crown-stage {
+    min-height: 220px;
+  }
+
+  .royal-crown {
+    font-size: 145px;
+  }
+
+  .royal-crown-ring {
+    width: 205px;
+  }
+
+  .royal-orbit {
+    right: -25px;
+    opacity: 0.5;
+  }
+
+  .royal-hero {
+    border-radius: 22px;
+  }
+
+  .royal-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Hareket azaltma tercihi olan kullanıcılar */
 
 @media (prefers-reduced-motion: reduce) {
-  .royal-crown,
-  .royal-glow,
-  .royal-title,
-  .royal-button {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
-
-  .royal-card {
-    transition: none;
-  }
-                        }
+}

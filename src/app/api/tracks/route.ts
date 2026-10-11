@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type JamendoTrack = {
+type Track = {
   id?: string | number;
   name?: string;
   artist_name?: string;
@@ -15,23 +15,17 @@ type JamendoTrack = {
   audiodownload_allowed?: boolean;
 };
 
-function normalize(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("tr-TR")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-async function searchJamendo(query: string, clientId: string) {
+async function searchJamendo(
+  query: string,
+  clientId: string,
+  mode: "search" | "namesearch"
+) {
   const url = new URL("https://api.jamendo.com/v3.0/tracks/");
 
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("format", "json");
   url.searchParams.set("limit", "30");
-  url.searchParams.set("search", query);
+  url.searchParams.set(mode, query);
   url.searchParams.set("audioformat", "mp32");
   url.searchParams.set("include", "musicinfo");
 
@@ -49,7 +43,7 @@ async function searchJamendo(query: string, clientId: string) {
     );
   }
 
-  return (Array.isArray(data.results) ? data.results : []) as JamendoTrack[];
+  return (Array.isArray(data.results) ? data.results : []) as Track[];
 }
 
 export async function GET(request: NextRequest) {
@@ -57,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   if (!query || query.length > 100) {
     return NextResponse.json(
-      { error: "Bir şarkı adı, sanatçı veya aramak istediğin sözleri yaz.", tracks: [] },
+      { error: "Şarkı veya sanatçı adı yaz.", tracks: [] },
       { status: 400 }
     );
   }
@@ -66,33 +60,50 @@ export async function GET(request: NextRequest) {
 
   if (!clientId) {
     return NextResponse.json(
-      { error: "JAMENDO_CLIENT_ID ayarlanmamış.", tracks: [] },
+      { error: "JAMENDO_CLIENT_ID eksik.", tracks: [] },
       { status: 503 }
     );
   }
 
-  try {
-    const queries = [query];
-    const words = query.split(/\s+/).filter(Boolean);
+  const errors: string[] = [];
+  let tracks: Track[] = [];
 
-    // Uzun söz parçalarında Jamendo'nun arama yapabileceği
-    // kısa kelime gruplarını da dene.
-    if (words.length >= 4) {
-      queries.push(words.slice(0, 3).join(" "));
-      queries.push(words.slice(-3).join(" "));
+  try {
+    try {
+      tracks = await searchJamendo(query, clientId, "search");
+    } catch (error) {
+      errors.push(
+        `Genel arama: ${
+          error instanceof Error ? error.message : "Bilinmeyen hata"
+        }`
+      );
     }
 
-    const uniqueQueries = [...new Set(queries)];
-    const results = await Promise.allSettled(
-      uniqueQueries.map((q) => searchJamendo(q, clientId))
-    );
+    if (tracks.length === 0) {
+      try {
+        tracks = await searchJamendo(query, clientId, "namesearch");
+      } catch (error) {
+        errors.push(
+          `İsim araması: ${
+            error instanceof Error ? error.message : "Bilinmeyen hata"
+          }`
+        );
+      }
+    }
 
-    const allTracks = results.flatMap((result) =>
-      result.status === "fulfilled" ? result.value : []
-    );
+    if (tracks.length === 0) {
+      return NextResponse.json({
+        tracks: [],
+        error: errors.length
+          ? "Jamendo arama istekleri başarısız oldu."
+          : "Bu arama için Jamendo kataloğunda sonuç bulunamadı.",
+        details: errors,
+      });
+    }
 
     const seen = new Set<string>();
-    const tracks = allTracks
+
+    const results = tracks
       .filter((track) => {
         if (
           track.id == null ||
@@ -103,8 +114,10 @@ export async function GET(request: NextRequest) {
         }
 
         const id = String(track.id);
+
         if (seen.has(id)) return false;
         seen.add(id);
+
         return true;
       })
       .map((track) => ({
@@ -119,12 +132,7 @@ export async function GET(request: NextRequest) {
       }));
 
     return NextResponse.json(
-      {
-        tracks,
-        searchMode: words.length >= 4 ? "expanded" : "standard",
-        note:
-          "Jamendo genel arama yapar; şarkı sözlerinin tamamında arama yapmaz.",
-      },
+      { tracks: results },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
@@ -138,4 +146,4 @@ export async function GET(request: NextRequest) {
       { status: 502 }
     );
   }
-}
+    }

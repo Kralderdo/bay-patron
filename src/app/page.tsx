@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -17,6 +16,9 @@ type Track = {
   audio: string;
   duration: number;
   downloadable: boolean;
+  source?: string;
+  officialUrl?: string;
+  previewOnly?: boolean;
 };
 
 type SavedTrack = Track & { blob: Blob };
@@ -107,6 +109,7 @@ async function deleteOfflineTrack(id: string) {
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+
   return `${Math.floor(seconds / 60)}:${String(
     Math.floor(seconds % 60)
   ).padStart(2, "0")}`;
@@ -129,9 +132,12 @@ export default function HomePage() {
   const [offlineTracks, setOfflineTracks] = useState<SavedTrack[]>([]);
   const [section, setSection] = useState("Keşfet");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("Krallara layık müziğini keşfet.");
+  const [message, setMessage] = useState(
+    "Krallara layık müziğini keşfet."
+  );
   const [playing, setPlaying] = useState(false);
   const [downloadingId, setDownloadingId] = useState("");
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const objectUrlRef = useRef("");
 
@@ -139,6 +145,7 @@ export default function HomePage() {
     try {
       const f = localStorage.getItem(FAVORITES_KEY);
       const p = localStorage.getItem(PLAYLIST_KEY);
+
       if (f) setFavorites(JSON.parse(f) as Track[]);
       if (p) setPlaylist(JSON.parse(p) as Track[]);
     } catch {
@@ -150,12 +157,15 @@ export default function HomePage() {
       .catch(() => {});
 
     return () => {
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
     };
   }, []);
 
   function persistFavorites(next: Track[]) {
     setFavorites(next);
+
     try {
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
     } catch {
@@ -165,6 +175,7 @@ export default function HomePage() {
 
   function persistPlaylist(next: Track[]) {
     setPlaylist(next);
+
     try {
       localStorage.setItem(PLAYLIST_KEY, JSON.stringify(next));
     } catch {
@@ -174,6 +185,7 @@ export default function HomePage() {
 
   async function searchMusic(event?: FormEvent) {
     event?.preventDefault();
+
     const term = query.trim();
 
     if (!term) {
@@ -183,12 +195,13 @@ export default function HomePage() {
 
     setLoading(true);
     setSection("Arama");
-    setMessage("Müzik evreni taranıyor...");
+    setMessage("Spotify ve Jamendo katalogları aranıyor...");
 
     try {
       const response = await fetch(
         `/api/tracks?q=${encodeURIComponent(term)}`
       );
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -196,6 +209,7 @@ export default function HomePage() {
       }
 
       const results = (data.tracks ?? []) as Track[];
+
       setTracks(results);
       setMessage(
         results.length
@@ -204,6 +218,7 @@ export default function HomePage() {
       );
     } catch (error) {
       setTracks([]);
+
       setMessage(
         error instanceof Error ? error.message : "Bağlantı hatası."
       );
@@ -214,7 +229,20 @@ export default function HomePage() {
 
   function playTrack(track: Track) {
     if (!track.audio) {
-      setMessage("Bu parçanın oynatma bağlantısı yok.");
+      if (track.officialUrl) {
+        window.open(
+          track.officialUrl,
+          "_blank",
+          "noopener,noreferrer"
+        );
+
+        setMessage(
+          `${track.title} Spotify'da açılıyor.`
+        );
+        return;
+      }
+
+      setMessage("Bu parça için oynatma bağlantısı bulunamadı.");
       return;
     }
 
@@ -230,10 +258,13 @@ export default function HomePage() {
   }
 
   function playOfflineTrack(track: SavedTrack) {
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+    }
 
     const url = URL.createObjectURL(track.blob);
     objectUrlRef.current = url;
+
     setCurrent(track);
     setAudioSource(url);
     setPlaying(true);
@@ -242,6 +273,7 @@ export default function HomePage() {
 
   function toggleFavorite(track: Track) {
     const exists = favorites.some((item) => item.id === track.id);
+
     persistFavorites(
       exists
         ? favorites.filter((item) => item.id !== track.id)
@@ -260,7 +292,7 @@ export default function HomePage() {
   }
 
   async function downloadTrack(track: Track) {
-    if (!track.downloadable) {
+    if (!track.downloadable || !track.audio) {
       setMessage("Bu parça için indirme izni bulunmuyor.");
       return;
     }
@@ -270,16 +302,24 @@ export default function HomePage() {
 
     try {
       const response = await fetch(track.audio);
-      if (!response.ok) throw new Error("Ses alınamadı.");
+
+      if (!response.ok) {
+        throw new Error("Ses alınamadı.");
+      }
 
       const blob = await response.blob();
-      if (!blob.size) throw new Error("Dosya boş.");
+
+      if (!blob.size) {
+        throw new Error("Dosya boş.");
+      }
 
       await saveOfflineTrack(track, blob);
       setOfflineTracks(await getOfflineTracks());
       setMessage("Parça cihazına kaydedildi.");
     } catch {
-      setMessage("Kayıt başarısız. Kaynak indirmeyi engelliyor olabilir.");
+      setMessage(
+        "Kayıt başarısız. Kaynak indirmeyi engelliyor olabilir."
+      );
     } finally {
       setDownloadingId("");
     }
@@ -320,6 +360,7 @@ export default function HomePage() {
             <span className="royal-logo flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e9c75b]/50 bg-gradient-to-br from-[#ffe9a0] via-[#c99a2e] to-[#6b4510] text-3xl text-black">
               ♛
             </span>
+
             <span>
               <span className="royal-title block text-lg font-black tracking-[.16em] sm:text-xl">
                 BAY PATRON
@@ -329,6 +370,7 @@ export default function HomePage() {
               </span>
             </span>
           </button>
+
           <span className="hidden rounded-full border border-[#d4af37]/30 px-4 py-2 text-[10px] uppercase tracking-[.2em] text-[#e9cb76] sm:block">
             ♛ Premium Experience
           </span>
@@ -340,6 +382,7 @@ export default function HomePage() {
           <div className="royal-halo" />
           <div className="royal-orbit royal-orbit-one" />
           <div className="royal-orbit royal-orbit-two" />
+
           <div className="royal-particles" aria-hidden="true">
             {Array.from({ length: 24 }, (_, i) => (
               <i key={i} style={{ "--i": i } as React.CSSProperties} />
@@ -351,11 +394,13 @@ export default function HomePage() {
               <p className="mb-4 text-[10px] font-bold uppercase tracking-[.4em] text-[#f0d68b]">
                 ✦ THE SOUND OF ROYALTY ✦
               </p>
+
               <h1 className="royal-title text-4xl font-black leading-[1.08] sm:text-6xl lg:text-7xl">
                 Müziğin
                 <br />
                 <span>Hükümdarı.</span>
               </h1>
+
               <p className="mx-auto mt-5 max-w-lg text-sm leading-7 text-[#c1b9a7] lg:mx-0">
                 Her ritimde ihtişam. Her notada ayrıcalık.
                 Kendi müzik dünyanı keşfet.
@@ -373,12 +418,13 @@ export default function HomePage() {
                   maxLength={100}
                   className="min-w-0 flex-1 rounded-xl bg-black/50 px-4 py-4 text-sm text-white outline-none placeholder:text-[#82775e] focus:ring-1 focus:ring-[#d4af37]/60"
                 />
+
                 <button
                   type="submit"
                   disabled={loading}
                   className="royal-button rounded-xl px-6 py-4 text-sm font-black text-black disabled:opacity-60"
                 >
-                  {loading ? "ARANIYOR..." : "⌕  MÜZİK ARA"}
+                  {loading ? "ARANIYOR..." : "⌕ MÜZİK ARA"}
                 </button>
               </form>
             </div>
@@ -423,10 +469,12 @@ export default function HomePage() {
             <p className="text-[10px] uppercase tracking-[.3em] text-[#d6b24e]">
               ✦ BAY PATRON COLLECTION
             </p>
+
             <h2 className="mt-2 text-2xl font-black sm:text-3xl">
               {section === "Keşfet" ? "Müzik keşfet" : section}
             </h2>
           </div>
+
           <span className="text-sm text-[#9b8d6b]">
             {visibleTracks.length} parça
           </span>
@@ -443,27 +491,45 @@ export default function HomePage() {
         {visibleTracks.length > 0 ? (
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleTracks.map((track) => {
-              const isFavorite = favorites.some((item) => item.id === track.id);
-              const isOffline = offlineTracks.some((item) => item.id === track.id);
+              const isFavorite = favorites.some(
+                (item) => item.id === track.id
+              );
+
+              const isOffline = offlineTracks.some(
+                (item) => item.id === track.id
+              );
 
               return (
-                <article key={track.id} className="royal-card group flex min-w-0 gap-4 rounded-2xl bg-gradient-to-br from-[#1c1810] to-[#0c0b09] p-3">
+                <article
+                  key={track.id}
+                  className="royal-card group flex min-w-0 gap-4 rounded-2xl bg-gradient-to-br from-[#1c1810] to-[#0c0b09] p-3"
+                >
                   <button
                     onClick={() =>
                       section === "Çevrimdışı"
                         ? playOfflineTrack(track as SavedTrack)
                         : playTrack(track)
                     }
-                    aria-label={`${track.title} parçasını çal`}
+                    aria-label={`${track.title} parçasını aç`}
                     className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-[#d4af37]/25 bg-[#211a0b]"
                   >
                     {track.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={track.image} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                      <img
+                        src={track.image}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                      />
                     ) : (
-                      <span className="flex h-full items-center justify-center text-4xl text-[#e6c55d]">♫</span>
+                      <span className="flex h-full items-center justify-center text-4xl text-[#e6c55d]">
+                        ♫
+                      </span>
                     )}
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-2xl opacity-0 transition group-hover:opacity-100">▶</span>
+
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-2xl opacity-0 transition group-hover:opacity-100">
+                      {track.audio ? "▶" : "↗"}
+                    </span>
                   </button>
 
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -477,26 +543,79 @@ export default function HomePage() {
                     >
                       {track.title}
                     </button>
-                    <p className="mt-1 truncate text-sm text-[#a69b82]">{track.artist}</p>
+
+                    <p className="mt-1 truncate text-sm text-[#a69b82]">
+                      {track.artist}
+                    </p>
+
+                    <p className="mt-1 truncate text-[10px] text-[#d1ae50]">
+                      {track.source ?? "Müzik"} 
+                      {!track.audio && track.officialUrl
+                        ? " · Spotify'da aç"
+                        : ""}
+                    </p>
 
                     <div className="mt-auto flex items-center justify-between gap-1 pt-3">
-                      <span className="text-xs text-[#786c53]">{formatTime(track.duration)}</span>
+                      <span className="text-xs text-[#786c53]">
+                        {formatTime(track.duration)}
+                      </span>
+
                       <div className="flex items-center gap-1">
-                        <button onClick={() => toggleFavorite(track)} aria-label="Favoriler" title="Favoriler" className={`rounded-lg px-2 py-1.5 text-lg ${isFavorite ? "text-[#ffdc6c]" : "text-[#8f8265] hover:text-[#ffdc6c]"}`}>
+                        <button
+                          onClick={() => toggleFavorite(track)}
+                          aria-label="Favorilere ekle veya çıkar"
+                          title="Favoriler"
+                          className={`rounded-lg px-2 py-1.5 text-lg ${
+                            isFavorite
+                              ? "text-[#ffdc6c]"
+                              : "text-[#8f8265] hover:text-[#ffdc6c]"
+                          }`}
+                        >
                           {isFavorite ? "♥" : "♡"}
                         </button>
-                        <button onClick={() => addToPlaylist(track)} aria-label="Çalma listesine ekle" title="Listeye ekle" className="rounded-lg px-2 py-1.5 text-lg text-[#b5a16c] hover:bg-[#d4af37]/10">+</button>
+
+                        <button
+                          onClick={() => addToPlaylist(track)}
+                          aria-label="Çalma listesine ekle"
+                          title="Listeye ekle"
+                          className="rounded-lg px-2 py-1.5 text-lg text-[#b5a16c] hover:bg-[#d4af37]/10"
+                        >
+                          +
+                        </button>
+
                         {section === "Çevrimdışı" ? (
-                          <button onClick={() => removeOfflineTrack(track.id)} aria-label="Çevrimdışı kaydı sil" className="rounded-lg px-2 py-1.5 text-sm text-red-400">✕</button>
+                          <button
+                            onClick={() => removeOfflineTrack(track.id)}
+                            aria-label="Çevrimdışı kaydı sil"
+                            className="rounded-lg px-2 py-1.5 text-sm text-red-400"
+                          >
+                            ✕
+                          </button>
                         ) : (
                           <button
                             onClick={() => downloadTrack(track)}
-                            disabled={!track.downloadable || isOffline || downloadingId === track.id}
+                            disabled={
+                              !track.downloadable ||
+                              isOffline ||
+                              downloadingId === track.id
+                            }
                             aria-label="Çevrimdışı kaydet"
-                            title={isOffline ? "Zaten kaydedildi" : track.downloadable ? "Çevrimdışı kaydet" : "İndirme izni yok"}
+                            title={
+                              isOffline
+                                ? "Zaten kaydedildi"
+                                : track.downloadable
+                                  ? "Çevrimdışı kaydet"
+                                  : "İndirme izni yok"
+                            }
                             className="rounded-lg px-2 py-1.5 text-sm text-[#e5c45d] hover:bg-[#d4af37]/10 disabled:cursor-not-allowed disabled:text-zinc-700"
                           >
-                            {downloadingId === track.id ? "…" : isOffline ? "✓" : track.downloadable ? "↓" : "⊘"}
+                            {downloadingId === track.id
+                              ? "…"
+                              : isOffline
+                                ? "✓"
+                                : track.downloadable
+                                  ? "↓"
+                                  : "⊘"}
                           </button>
                         )}
                       </div>
@@ -509,6 +628,7 @@ export default function HomePage() {
         ) : (
           <div className="mt-5 rounded-2xl border border-dashed border-[#d4af37]/20 bg-[#12100c]/60 px-5 py-14 text-center">
             <div className="text-5xl text-[#d8b650]">♛</div>
+
             <p className="mt-4 font-semibold text-[#e5d6b2]">
               {section === "Favoriler"
                 ? "Henüz favorin yok."
@@ -518,11 +638,18 @@ export default function HomePage() {
                     ? "Henüz çevrimdışı parçan yok."
                     : "Müzik arayarak krallığını keşfet."}
             </p>
+
             <p className="mt-2 text-sm text-[#93866a]">
-              {section === "Keşfet" ? "Yukarıdaki arama alanını kullan." : "Parçaları keşfet bölümünden ekleyebilirsin."}
+              {section === "Keşfet"
+                ? "Yukarıdaki arama alanını kullan."
+                : "Parçaları keşfet bölümünden ekleyebilirsin."}
             </p>
+
             {section !== "Keşfet" && (
-              <button onClick={() => setSection("Keşfet")} className="royal-button mt-5 rounded-xl px-5 py-3 text-sm font-bold text-black">
+              <button
+                onClick={() => setSection("Keşfet")}
+                className="royal-button mt-5 rounded-xl px-5 py-3 text-sm font-bold text-black"
+              >
                 Müzik keşfet
               </button>
             )}
@@ -543,21 +670,35 @@ export default function HomePage() {
               <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-[#d4af37]/30 bg-[#201909] text-center text-xl leading-[44px] text-[#e4c15d]">
                 {current.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={current.image} alt="" className="h-full w-full object-cover" />
-                ) : "♫"}
+                  <img
+                    src={current.image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  "♫"
+                )}
               </div>
+
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-[#f4e3b5]">{current.title}</p>
-                <p className="truncate text-xs text-[#96896b]">{current.artist}</p>
+                <p className="truncate text-sm font-bold text-[#f4e3b5]">
+                  {current.title}
+                </p>
+                <p className="truncate text-xs text-[#96896b]">
+                  {current.artist}
+                </p>
               </div>
+
               <span className="hidden text-[10px] tracking-widest text-[#e4c15d] sm:inline">
                 {playing ? "● OYNATIYOR" : "DURAKLATILDI"}
               </span>
+
               <button
                 onClick={() => {
                   setCurrent(null);
                   setAudioSource("");
                   setPlaying(false);
+
                   if (objectUrlRef.current) {
                     URL.revokeObjectURL(objectUrlRef.current);
                     objectUrlRef.current = "";
@@ -565,8 +706,11 @@ export default function HomePage() {
                 }}
                 aria-label="Oynatıcıyı kapat"
                 className="rounded-lg px-3 py-2 text-[#a99a75] hover:bg-white/5 hover:text-white"
-              >✕</button>
+              >
+                ✕
+              </button>
             </div>
+
             <audio
               ref={audioRef}
               key={audioSource}
@@ -578,7 +722,9 @@ export default function HomePage() {
               onEnded={() => setPlaying(false)}
               onError={() => {
                 setPlaying(false);
-                setMessage("Bu parça oynatılamadı. Başka bir parça dene.");
+                setMessage(
+                  "Bu parça oynatılamadı. Başka bir parça dene."
+                );
               }}
               className="h-10 w-full"
             />
@@ -587,4 +733,4 @@ export default function HomePage() {
       )}
     </main>
   );
-}
+  }

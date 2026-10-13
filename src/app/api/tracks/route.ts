@@ -18,12 +18,12 @@ type JamendoTrack = {
 type SpotifyTrack = {
   id: string;
   name: string;
-  artists: { name: string }[];
-  album: {
-    name: string;
+  artists?: { name: string }[];
+  album?: {
+    name?: string;
     images?: { url: string }[];
   };
-  duration_ms: number;
+  duration_ms?: number;
   external_urls?: { spotify?: string };
 };
 
@@ -77,7 +77,7 @@ async function getSpotifyToken(): Promise<string> {
 
   if (!clientId || !clientSecret) {
     throw new Error(
-      "Spotify için SPOTIFY_CLIENT_ID veya SPOTIFY_CLIENT_SECRET eksik."
+      "SPOTIFY_CLIENT_ID veya SPOTIFY_CLIENT_SECRET eksik."
     );
   }
 
@@ -120,7 +120,9 @@ async function searchSpotify(
 
   url.searchParams.set("q", query);
   url.searchParams.set("type", "track");
-  url.searchParams.set("limit", "50");
+
+  // Spotify aramasında sonuç sayısını 10 ile sınırla.
+  url.searchParams.set("limit", "10");
   url.searchParams.set("market", "TR");
 
   const response = await fetch(url.toString(), {
@@ -135,7 +137,8 @@ async function searchSpotify(
 
   if (!response.ok) {
     throw new Error(
-      data.error?.message || "Spotify araması başarısız."
+      data.error?.message ||
+        `Spotify araması başarısız (HTTP ${response.status}).`
     );
   }
 
@@ -150,8 +153,9 @@ export async function GET(request: NextRequest) {
   if (!query || query.length > 100) {
     return NextResponse.json(
       {
-        error: "Bir şarkı, sanatçı veya arama ifadesi yaz.",
+        error: "Bir şarkı veya sanatçı adı yaz.",
         tracks: [],
+        total: 0,
       },
       { status: 400 }
     );
@@ -170,20 +174,19 @@ export async function GET(request: NextRequest) {
     results.push(track);
   }
 
+  const jamendoId = process.env.JAMENDO_CLIENT_ID;
+
   const jobs = await Promise.allSettled([
     searchSpotify(query),
-    process.env.JAMENDO_CLIENT_ID
-      ? searchJamendo(query, process.env.JAMENDO_CLIENT_ID, "search")
+    jamendoId
+      ? searchJamendo(query, jamendoId, "search")
       : Promise.resolve([] as JamendoTrack[]),
-    process.env.JAMENDO_CLIENT_ID
-      ? searchJamendo(
-          query,
-          process.env.JAMENDO_CLIENT_ID,
-          "namesearch"
-        )
+    jamendoId
+      ? searchJamendo(query, jamendoId, "namesearch")
       : Promise.resolve([] as JamendoTrack[]),
   ]);
 
+  // Spotify sonuçları
   if (jobs[0].status === "fulfilled") {
     for (const track of jobs[0].value) {
       addTrack({
@@ -203,24 +206,25 @@ export async function GET(request: NextRequest) {
       });
     }
   } else {
+    const reason = jobs[0].reason;
+
     errors.push(
       `Spotify: ${
-        jobs[0].reason instanceof Error
-          ? jobs[0].reason.message
-          : "Arama başarısız."
+        reason instanceof Error ? reason.message : "Arama başarısız."
       }`
     );
   }
 
-  for (const index of [1, 2]) {
+  // Jamendo sonuçlarını birleştir
+  for (const index of [1, 2] as const) {
     const job = jobs[index];
 
     if (job.status === "rejected") {
+      const reason = job.reason;
+
       errors.push(
         `Jamendo: ${
-          job.reason instanceof Error
-            ? job.reason.message
-            : "Arama başarısız."
+          reason instanceof Error ? reason.message : "Arama başarısız."
         }`
       );
       continue;
@@ -250,15 +254,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  results.sort((a, b) => {
-    const aStarts = a.title
-      .toLocaleLowerCase("tr-TR")
-      .startsWith(query.toLocaleLowerCase("tr-TR"));
-    const bStarts = b.title
-      .toLocaleLowerCase("tr-TR")
-      .startsWith(query.toLocaleLowerCase("tr-TR"));
+  // Başlıktaki tam eşleşmelere öncelik ver.
+  const normalizedQuery = query.toLocaleLowerCase("tr-TR");
 
-    return Number(bStarts) - Number(aStarts);
+  results.sort((a, b) => {
+    const aMatch =
+      a.title.toLocaleLowerCase("tr-TR") === normalizedQuery;
+    const bMatch =
+      b.title.toLocaleLowerCase("tr-TR") === normalizedQuery;
+
+    return Number(bMatch) - Number(aMatch);
   });
 
   return NextResponse.json(
